@@ -159,50 +159,6 @@ export const findInstitutionDetails = async (query: string): Promise<Partial<Ins
   }
 };
 
-export const generatePatientInstructions = async (
-  categories: string[],
-  context: string
-): Promise<string | null> => {
-  try {
-    const categoryText = categories.length > 0 ? categories.join(", ") : "Gerais";
-    
-    const prompt = `
-      Atue como um médico especialista. Gere orientações personalizadas e claras para um paciente.
-      
-      Categorias de foco: ${categoryText}.
-      Contexto clínico do paciente: ${context}.
-      
-      O texto deve ser:
-      1. Empático, claro e educativo.
-      2. Estruturado em tópicos simples.
-      3. Formatado em texto simples (não use Markdown complexo como ## ou ** exagerado).
-      4. Use marcadores como "•" para listas.
-      5. Use títulos em caixa alta para separar seções (ex: ALIMENTAÇÃO, REPOUSO).
-      
-      Exemplo de estrutura desejada:
-      
-      RECOMENDAÇÕES GERAIS
-      • Mantenha repouso relativo por 3 dias.
-      • Beba bastante água.
-      
-      SINAIS DE ALERTA
-      • Se houver febre alta, retorne.
-      
-      Gere o texto completo agora.
-    `;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-    });
-
-    return response.text || null;
-  } catch (error) {
-    console.error("Error generating instructions:", error);
-    throw error;
-  }
-};
-
 export interface AppGuideContent {
   overview: string;
   steps: { title: string; description: string }[];
@@ -216,7 +172,7 @@ export const generateAppGuide = async (userRole: 'doctor' | 'guest'): Promise<Ap
       "Geração de Receitas Médicas",
       "Sugestões Clínicas via IA",
       "Verificação de Interações Medicamentosas (Gestante/Pediátrico)",
-      "Editor de Orientações Personalizadas com IA",
+      "Editor de Orientações Personalizadas (Manual)",
       "Geração de Atestados e Declarações",
       "Modo Visitante (Edição de Cabeçalho)",
       "Perfil de Médico (Edição de Foto/Dados)",

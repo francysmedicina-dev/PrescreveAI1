@@ -1,8 +1,8 @@
 
 import React, { useState, useRef } from 'react';
-import { Plus, Trash2, Sparkles, Loader2, Search, Calendar, MapPin, Eye, ShieldAlert, Baby, Users, Save, AlertCircle, AlertTriangle, FileText, UserCog, RefreshCw, ChevronDown, ChevronUp, Wand2, RotateCcw, X, Check } from 'lucide-react';
+import { Plus, Trash2, Sparkles, Loader2, Search, Calendar, MapPin, Eye, ShieldAlert, Baby, Users, Save, AlertCircle, AlertTriangle, FileText, UserCog, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { PrescriptionState, Medication, AiSuggestionResponse, Doctor } from '../types';
-import { suggestPrescription, checkInteractions, generatePatientInstructions } from '../services/geminiService';
+import { suggestPrescription, checkInteractions } from '../services/geminiService';
 import { v4 as uuidv4 } from 'uuid';
 
 interface EditorProps {
@@ -29,18 +29,6 @@ const UNIT_OPTIONS = [
   "Lata(s)",
   "Pacote(s)",
   "Uso Contínuo"
-];
-
-const AI_INSTRUCTION_CATEGORIES = [
-  "Ortopédicas",
-  "Fisioterápicas",
-  "Repouso",
-  "Exercícios",
-  "Alimentação",
-  "Hidratação",
-  "Cuidados com Feridas",
-  "Sinais de Alerta",
-  "Outros"
 ];
 
 // Helper to check if quantity is excessive based on unit
@@ -85,12 +73,6 @@ const Editor: React.FC<EditorProps> = ({
 
   // Custom Instructions State
   const [isInstructionsExpanded, setIsInstructionsExpanded] = useState(false);
-  const [showAiInstructionModal, setShowAiInstructionModal] = useState(false);
-  const [aiInstructionCategories, setAiInstructionCategories] = useState<string[]>([]);
-  const [aiInstructionContext, setAiInstructionContext] = useState("");
-  const [aiInstructionDraft, setAiInstructionDraft] = useState("");
-  const [aiInstructionHistory, setAiInstructionHistory] = useState<string[]>([]);
-  const [generatingInstructions, setGeneratingInstructions] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, field: keyof PrescriptionState) => {
     setState(prev => ({ ...prev, [field]: e.target.value }));
@@ -216,34 +198,6 @@ const Editor: React.FC<EditorProps> = ({
   };
 
   // --- Custom Instructions Logic ---
-
-  const toggleAiCategory = (cat: string) => {
-    setAiInstructionCategories(prev => 
-      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
-    );
-  };
-
-  const handleGenerateInstructions = async () => {
-    setGeneratingInstructions(true);
-    try {
-      const context = `Diagnóstico: ${state.diagnosis}. ${aiInstructionContext}`;
-      const result = await generatePatientInstructions(aiInstructionCategories, context);
-      if (result) {
-        setAiInstructionDraft(result);
-        setAiInstructionHistory(prev => [result, ...prev].slice(0, 3));
-      }
-    } catch (e) {
-      alert("Erro ao gerar orientações.");
-    } finally {
-      setGeneratingInstructions(false);
-    }
-  };
-
-  const applyAiInstructions = () => {
-    setState(prev => ({ ...prev, customInstructions: aiInstructionDraft }));
-    setShowAiInstructionModal(false);
-    setAiInstructionDraft("");
-  };
 
   const insertFormatting = (char: string) => {
     // Simple appending for now, a real rich text editor needs complex ref handling
@@ -681,13 +635,6 @@ const Editor: React.FC<EditorProps> = ({
                     B
                   </button>
                   <div className="h-4 w-px bg-gray-300 dark:bg-gray-600 mx-1"></div>
-                  <button 
-                    onClick={() => setShowAiInstructionModal(true)}
-                    className="flex items-center gap-1.5 px-2 py-1.5 text-white bg-indigo-600 hover:bg-indigo-700 rounded text-xs font-medium shadow-sm transition-colors ml-auto"
-                  >
-                    <Wand2 size={12} />
-                    IA Gerador
-                  </button>
                </div>
 
                <textarea
@@ -734,124 +681,6 @@ const Editor: React.FC<EditorProps> = ({
            Pré-visualizar Receita
         </button>
       </div>
-
-      {/* AI Instructions Generator Modal */}
-      {showAiInstructionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-gray-200 dark:border-gray-700">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/20 rounded-t-xl">
-                 <div className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                    <h3 className="font-bold text-gray-900 dark:text-white">Gerador de Orientações com IA</h3>
-                 </div>
-                 <button onClick={() => setShowAiInstructionModal(false)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                   <X size={20} />
-                 </button>
-              </div>
-
-              <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
-                 {!aiInstructionDraft ? (
-                    <div className="space-y-4">
-                       <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Selecione as Categorias:</label>
-                          <div className="flex flex-wrap gap-2">
-                             {AI_INSTRUCTION_CATEGORIES.map(cat => (
-                                <button
-                                  key={cat}
-                                  onClick={() => toggleAiCategory(cat)}
-                                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                     aiInstructionCategories.includes(cat)
-                                       ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700'
-                                       : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                                  }`}
-                                >
-                                   {cat} {aiInstructionCategories.includes(cat) && <Check size={10} className="inline ml-1" />}
-                                </button>
-                             ))}
-                          </div>
-                       </div>
-                       
-                       <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Contexto Clínico Adicional:</label>
-                          <input
-                            type="text"
-                            value={aiInstructionContext}
-                            onChange={(e) => setAiInstructionContext(e.target.value)}
-                            placeholder="Ex: Entorse de tornozelo esquerdo, adulto jovem, atleta."
-                            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                          />
-                       </div>
-                       
-                       {aiInstructionHistory.length > 0 && (
-                         <div className="mt-4">
-                            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase">Histórico Recente</label>
-                            <div className="flex flex-col gap-2">
-                               {aiInstructionHistory.map((hist, idx) => (
-                                  <div key={idx} className="text-xs p-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded truncate cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" onClick={() => setAiInstructionDraft(hist)}>
-                                     {hist.substring(0, 80)}...
-                                  </div>
-                               ))}
-                            </div>
-                         </div>
-                       )}
-                    </div>
-                 ) : (
-                    <div className="space-y-4 h-full flex flex-col">
-                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Rascunho Gerado (Editável):</label>
-                       <textarea
-                          value={aiInstructionDraft}
-                          onChange={(e) => setAiInstructionDraft(e.target.value)}
-                          className="w-full flex-1 min-h-[200px] p-4 border border-indigo-200 dark:border-indigo-800 rounded-lg bg-indigo-50/30 dark:bg-indigo-900/10 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none leading-relaxed"
-                       />
-                       <div className="flex items-center gap-2 text-xs text-gray-500 italic">
-                          <AlertCircle size={12} />
-                          A inteligência artificial é apenas uma ferramenta auxiliar. Revise todo o conteúdo.
-                       </div>
-                    </div>
-                 )}
-              </div>
-
-              <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 rounded-b-xl">
-                 {!aiInstructionDraft ? (
-                    <>
-                      <button onClick={() => setShowAiInstructionModal(false)} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white">Cancelar</button>
-                      <button 
-                        onClick={handleGenerateInstructions}
-                        disabled={generatingInstructions}
-                        className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow-sm flex items-center gap-2 disabled:opacity-70"
-                      >
-                        {generatingInstructions ? <Loader2 className="animate-spin h-4 w-4" /> : <Wand2 className="h-4 w-4" />}
-                        Gerar Orientações
-                      </button>
-                    </>
-                 ) : (
-                    <>
-                      <button 
-                         onClick={() => setAiInstructionDraft("")}
-                         className="flex items-center gap-1 px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white"
-                      >
-                         <RotateCcw size={14} /> Voltar
-                      </button>
-                      <div className="flex gap-2">
-                         <button 
-                            onClick={() => setShowAiInstructionModal(false)}
-                            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                         >
-                            Cancelar
-                         </button>
-                         <button 
-                            onClick={applyAiInstructions}
-                            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium shadow-sm flex items-center gap-2"
-                         >
-                            <Check size={16} /> Inserir no Documento
-                         </button>
-                      </div>
-                    </>
-                 )}
-              </div>
-           </div>
-        </div>
-      )}
     </div>
   );
 };
